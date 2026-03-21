@@ -142,6 +142,57 @@ def fallback_parse(text, today_str):
 def parse_with_ai(text, today):
     text = normalize_numbers(text)
 
+    SYSTEM_PROMPT = """
+You are a smart financial assistant.
+
+Your job is to extract structured financial data from user messages.
+
+Return ONLY a valid JSON array.
+
+Each object must contain:
+- amount (number)
+- type ("expense" or "income")
+- category (one of the allowed categories)
+- note (short description)
+- date (YYYY-MM-DD)
+
+---
+
+Allowed categories:
+- Ovqat
+- Transport
+- Uy
+- Kommunal
+- Sog'liq
+- O'yin-kulgi
+- Daromad
+- Boshqa
+
+---
+
+Rules:
+
+1. Choose the MOST relevant category
+2. Use "Boshqa" ONLY if nothing matches
+3. Food-related words (bozor, go‘sht, non, ovqat):
+   → Ovqat
+4. Transport (taksi, benzin, mashina):
+   → Transport
+5. Utilities (gaz, svet, elektr):
+   → Kommunal
+6. Health (dorixona, dori):
+   → Sog'liq
+7. Income words (oylik, maosh, bonus):
+   → type = income AND category = Daromad
+8. Understand Uzbek language and short forms like "k", "ming", "mln"
+
+---
+
+Important:
+- Detect multiple transactions if present
+- Do NOT return explanations
+"""
+
     prompt = f"""
 Extract financial transactions from this message:
 
@@ -172,7 +223,32 @@ Rules:
 - 2 kun oldin = today's date - 2 days
 - bir hafta oldin = today's date - 7 days
 - if date is not mentioned, use {today}
-- Do not write explanations
+
+Examples:
+
+Input: "onamga 100 ming bozor"
+Output:
+[
+  {{
+    "amount": 100000,
+    "type": "expense",
+    "category": "Ovqat",
+    "note": "bozor",
+    "date": "{today}"
+  }}
+]
+
+Input: "taksi 20k"
+Output:
+[
+  {{
+    "amount": 20000,
+    "type": "expense",
+    "category": "Transport",
+    "note": "taksi",
+    "date": "{today}"
+  }}
+]
 """
 
     try:
@@ -181,7 +257,7 @@ Rules:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a financial transaction parser. Return JSON array only."
+                    "content": SYSTEM_PROMPT
                 },
                 {
                     "role": "user",

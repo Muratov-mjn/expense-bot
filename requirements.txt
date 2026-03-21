@@ -1,5 +1,5 @@
 python-telegram-bot
-openai
+openai==1.30.5
 python-dotenv
 gspread
 google-auth
